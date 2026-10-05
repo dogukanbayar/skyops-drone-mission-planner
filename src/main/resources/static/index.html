@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkyOps · Görev Komuta Merkezi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#0c1520;--panel:#121f2e;--panel2:#182a3d;--line:#2a4560;--text:#e8eef5;--mute:#93a9bf;--cyan:#41d9e8;--amber:#f5a524;--red:#ff6b6b;--green:#4ade80;--violet:#b4a0ff;--slate:#7b8da3;--sky:#5db8ff}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 "IBM Plex Sans",system-ui,sans-serif;display:flex;flex-direction:column}
+h1,h2,h3{font-family:"Bricolage Grotesque",sans-serif;margin:0;letter-spacing:-.01em}
+.mono{font-family:"IBM Plex Mono",monospace}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:8px;padding:7px 12px}
+button:hover:not(:disabled){border-color:var(--cyan)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible,.m-card:focus-visible,.d-card:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button.primary{background:var(--cyan);color:#06222a;border-color:var(--cyan);font-weight:500}
+button.danger{color:var(--red)}button.danger.solid{background:var(--red);color:#2a0606;border-color:var(--red);font-weight:500}
+button.ghost{background:transparent}
+header{display:flex;align-items:center;gap:24px;padding:12px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque";font-weight:700;font-size:20px}
+.brand svg{width:26px;height:26px}
+.stats{display:flex;gap:22px;margin-left:auto;flex-wrap:wrap}
+.stat b{font:500 22px "IBM Plex Mono";display:block;line-height:1}.stat span{color:var(--mute);font-size:12px}
+.stat.live b{color:var(--green)}
+main{flex:1;min-height:0;display:grid;grid-template-columns:340px 1fr 300px}
+aside{background:var(--panel);overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+aside.left{border-right:1px solid var(--line)}aside.right{border-left:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:8px}.sp{margin-left:auto}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:3px 10px;border-radius:99px;font-size:12px}
+.chip[aria-pressed=true]{background:var(--cyan);color:#06222a;border-color:var(--cyan)}
+.m-card{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--pc,var(--slate));border-radius:10px;padding:10px 12px;cursor:pointer}
+.m-card[aria-selected=true]{border-color:var(--cyan);border-left-color:var(--pc);box-shadow:0 0 0 1px var(--cyan) inset}
+.m-card h3{font-size:15px}.m-card small{color:var(--mute)}
+.p-LOW{--pc:var(--slate)}.p-MEDIUM{--pc:var(--sky)}.p-HIGH{--pc:var(--amber)}.p-CRITICAL{--pc:var(--red)}
+.pill{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.s-PLANNED{color:var(--sky)}.s-ACTIVE{color:var(--green)}.s-FINISHED{color:var(--violet)}.s-CANCELLED{color:var(--slate)}
+.s-ACTIVE::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+#mapwrap{position:relative;min-height:300px}#map{position:absolute;inset:0;background:#0a121b}
+.leaflet-container{font-family:inherit}
+.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.9) saturate(.5)}
+.detail{position:absolute;left:14px;bottom:14px;z-index:500;width:min(380px,calc(100% - 28px));background:rgba(18,31,46,.96);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;padding:14px;max-height:62%;overflow:auto}
+.acts{display:flex;gap:6px;margin:10px 0 6px;flex-wrap:wrap}
+.reason{color:var(--amber);font-size:12px;margin:0 0 6px}
+.hint{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(18,31,46,.96);border:1px solid var(--line);border-radius:99px;padding:6px 8px 6px 14px;display:flex;gap:8px;align-items:center;font-size:13px;max-width:calc(100% - 90px)}
+.hint input{width:70px;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:3px 6px;font-family:"IBM Plex Mono"}
+.wp-list{margin:6px 0 0;padding:0;list-style:none;font:12px "IBM Plex Mono";color:var(--mute)}
+.wp-list li{display:flex;gap:8px;padding:2px 0}.wp-list b{color:var(--cyan);font-weight:500;min-width:18px}
+.num{width:26px;height:26px;border-radius:50%;background:var(--bg);border:2px solid var(--cyan);color:var(--cyan);display:grid;place-items:center;font:500 12px "IBM Plex Mono"}
+.flow{stroke-dasharray:8 8;animation:flow 1s linear infinite}@keyframes flow{to{stroke-dashoffset:-16}}
+.steps{display:flex;gap:0;list-style:none;padding:0;margin:10px 0 0;font-size:12px}
+.st{flex:1;text-align:center;color:var(--mute);position:relative;padding-top:14px}
+.st::before{content:"";position:absolute;top:3px;left:50%;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:var(--line);z-index:1}
+.st::after{content:"";position:absolute;top:7px;left:-50%;width:100%;height:2px;background:var(--line)}
+.st:first-child::after{display:none}
+.st.done{color:var(--text)}.st.done::before,.st.done::after{background:var(--cyan)}
+.st.now{color:var(--cyan);font-weight:500}.st.now::before{background:var(--cyan);box-shadow:0 0 0 4px rgba(65,217,232,.25)}.st.now::after{background:var(--cyan)}
+.st.cancel{color:var(--red)}.st.cancel::before{background:var(--red)}.st.cancel::after{background:var(--red)}
+details{margin-top:10px}summary{cursor:pointer;color:var(--cyan);font-size:13px}
+.coords{display:grid;grid-template-columns:1fr 1fr 70px auto;gap:6px;margin-top:8px}
+.coords input{padding:6px 8px}
+.d-card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.d-card[aria-pressed=true]{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset}
+.d-card.linked{border-color:var(--amber)}
+.bar{height:6px;border-radius:3px;background:var(--bg);margin:8px 0;overflow:hidden}.bar i{display:block;height:100%;background:var(--green)}
+.bar.low i{background:var(--amber)}.bar.crit i{background:var(--red)}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:20px;width:min(440px,92vw)}
+dialog::backdrop{background:rgba(5,10,16,.7)}
+label{display:block;color:var(--mute);font-size:12px;margin:10px 0 3px}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font:inherit}
+#toasts{position:fixed;right:16px;top:16px;z-index:2000;display:flex;flex-direction:column;gap:8px;width:min(380px,92vw)}
+.toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--cyan);border-radius:10px;padding:10px 14px;animation:in .2s}
+.toast.err{border-left-color:var(--red)}.toast b{display:block}.toast small{color:var(--mute)}
+@keyframes in{from{transform:translateX(20px);opacity:0}}
+.empty{color:var(--mute);padding:16px 4px;text-align:center}
+.warn{color:var(--amber);font-size:12px;margin:8px 0 0}
+@media(max-width:1000px){main{grid-template-columns:1fr;grid-auto-rows:minmax(320px,auto);overflow:auto}#mapwrap{min-height:480px}.detail{max-height:70%}.coords{grid-template-columns:1fr 1fr}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><svg viewBox="0 0 32 32" fill="none" stroke="#41d9e8" stroke-width="2" aria-hidden="true"><circle cx="16" cy="16" r="3"/><circle cx="6" cy="6" r="3.5"/><circle cx="26" cy="6" r="3.5"/><circle cx="6" cy="26" r="3.5"/><circle cx="26" cy="26" r="3.5"/><path d="M8.5 8.5l5 5M23.5 8.5l-5 5M8.5 23.5l5-5M23.5 23.5l-5-5"/></svg>SkyOps Komuta Merkezi</div>
+  <div class="stats" id="stats"></div>
+</header>
+<main>
+  <aside class="left" aria-label="Görevler">
+    <div class="row"><h2>Görevler</h2><button class="primary sp" onclick="openMission()">Yeni görev</button></div>
+    <div class="chips" id="fStatus" role="group" aria-label="Duruma göre filtrele"></div>
+    <div class="chips" id="fPrio" role="group" aria-label="Önceliğe göre filtrele"></div>
+    <div id="fDrone"></div>
+    <div id="missions" role="listbox" aria-label="Görev listesi"></div>
+  </aside>
+  <div id="mapwrap"><div id="map" aria-label="Görev rotası haritası"></div>
+    <div class="hint" id="hint" hidden>Haritaya tıklayarak nokta ekle · rakım <input id="alt" type="number" value="120" min="0" max="10000" aria-label="Rakım (metre)"> m</div>
+    <div class="detail" id="detail" hidden></div>
+  </div>
+  <aside class="right" aria-label="Filo">
+    <div class="row"><h2>Filo</h2><button class="sp" onclick="openDrone()">Drone ekle</button></div>
+    <small style="color:var(--mute)">Karta tıklayarak o drone'un görevlerini filtrele.</small>
+    <div id="drones"></div>
+  </aside>
+</main>
+<div id="toasts" aria-live="polite"></div>
+<dialog id="dlg"></dialog>
+<dialog id="cdlg"></dialog>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const TR={LOW:'Düşük',MEDIUM:'Orta',HIGH:'Yüksek',CRITICAL:'Kritik',PLANNED:'Planlandı',ACTIVE:'Aktif',FINISHED:'Tamamlandı',CANCELLED:'İptal'};
+const COLORS={LOW:'#7b8da3',MEDIUM:'#5db8ff',HIGH:'#f5a524',CRITICAL:'#ff6b6b'};
+const S={missions:[],drones:[],operators:[],selected:null,fStatus:'',fPrio:'',fDrone:null,coordOpen:false};
+
+async function api(path,opt={}){
+  const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},...opt});
+  const t=await r.text(), d=t?JSON.parse(t):null;
+  if(!r.ok){const e=new Error(d?.message||'Beklenmeyen hata');e.fields=d?.validationErrors;throw e;}
+  return d;
+}
+function toast(msg,err,sub){const t=document.createElement('div');t.className='toast'+(err?' err':'');
+  t.innerHTML=`<b>${esc(msg)}</b>${sub?`<small>${esc(sub)}</small>`:''}`;$('#toasts').append(t);setTimeout(()=>t.remove(),err?6000:3000);}
+async function act(fn,okMsg){try{const r=await fn();if(okMsg)toast(okMsg);await load();return r}
+  catch(e){toast(e.message,true,e.fields?Object.entries(e.fields).map(([k,v])=>k+': '+v).join(' · '):'');}}
+function confirmBox(title,text,ok,danger){return new Promise(res=>{const d=$('#cdlg');
+  d.innerHTML=`<h2>${esc(title)}</h2><p style="color:var(--mute)">${esc(text)}</p><div class="row" style="margin-top:16px"><button class="ghost" id="cno">Vazgeç</button><button class="${danger?'danger solid':'primary'} sp" id="cyes">${esc(ok)}</button></div>`;
+  d.oncancel=()=>res(false);d.showModal();
+  $('#cno').onclick=()=>{d.close();res(false)};$('#cyes').onclick=()=>{d.close();res(true)};$('#cno').focus();});}
+
+/* ---------- map ---------- */
+const map=L.map('map',{zoomControl:false}).setView([41.04,29.0],11);
+L.control.zoom({position:'topright'}).addTo(map);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(map);
+const layer=L.layerGroup().addTo(map);
+const sel=()=>S.missions.find(m=>m.id===S.selected);
+const editable=m=>m&&(m.status==='PLANNED'||m.status==='ACTIVE');
+const addWp=(id,lat,lon,alt)=>act(()=>api(`/missions/${id}/waypoints`,{method:'POST',body:JSON.stringify({latitude:+(+lat).toFixed(6),longitude:+(+lon).toFixed(6),altitude:+alt||0})}),'Nokta eklendi');
+map.on('click',e=>{
+  const m=sel(); if(!m) return toast('Önce soldan bir görev seç.',false,'Sonra haritaya tıklayarak rota noktası ekleyebilirsin.');
+  if(!editable(m)) return toast('Bu görev sonlandığı için nokta eklenemez.',true);
+  addWp(m.id,e.latlng.lat,e.latlng.lng,$('#alt').value);
+});
+function addManual(){const m=sel(),lat=+$('#mlat').value,lon=+$('#mlon').value,alt=+$('#malt').value;
+  if($('#mlat').value===''||$('#mlon').value==='') return toast('Enlem ve boylam gerekli.',true);
+  if(Math.abs(lat)>90||Math.abs(lon)>180) return toast('Enlem -90..90, boylam -180..180 aralığında olmalı.',true);
+  addWp(m.id,lat,lon,alt);}
+function drawRoute(fit){
+  layer.clearLayers();const m=sel(); if(!m) return;
+  const pts=m.waypoints.map(w=>[w.latitude,w.longitude]), c=COLORS[m.priority];
+  if(pts.length>1){L.polyline(pts,{color:c,weight:3,opacity:.9,className:m.status==='ACTIVE'?'flow':''}).addTo(layer);}
+  m.waypoints.forEach(w=>L.marker([w.latitude,w.longitude],{keyboard:false,icon:L.divIcon({className:'',html:`<div class="num" style="border-color:${c};color:${c}">${w.sequenceNo}</div>`,iconSize:[26,26],iconAnchor:[13,13]})})
+    .bindTooltip(`${w.latitude.toFixed(4)}, ${w.longitude.toFixed(4)} · ${w.altitude} m`).addTo(layer));
+  if(fit&&pts.length) map.fitBounds(pts,{padding:[80,80],maxZoom:14});
+}
+
+/* ---------- render ---------- */
+function renderStats(s){
+  const items=[['Toplam görev',s.totalMissions],['Aktif',s.active,'live'],['Planlanan',s.planned],['Tamamlanan',s.finished],['Bakımdaki drone',s.inMaintenance+' / '+s.totalDrones]];
+  $('#stats').innerHTML=items.map(([l,v,c])=>`<div class="stat ${c||''}"><b>${v}</b><span>${l}</span></div>`).join('');
+}
+function chips(el,key,opts){$(el).innerHTML=['',...opts].map(o=>`<button class="chip ghost" aria-pressed="${S[key]===o}" onclick="S.${key}='${o}';render()">${o?TR[o]:'Tümü'}</button>`).join('');}
+function stepper(m){
+  if(m.status==='CANCELLED') return `<ol class="steps" aria-label="Yaşam döngüsü"><li class="st done">Planlandı</li><li class="st cancel">İptal edildi</li></ol>`;
+  const order=['PLANNED','ACTIVE','FINISHED'],idx=order.indexOf(m.status);
+  return `<ol class="steps" aria-label="Yaşam döngüsü">${order.map((s,i)=>`<li class="st ${i<idx?'done':i===idx?'now':''}">${TR[s]}</li>`).join('')}</ol>`;
+}
+/* Her aksiyon için "neden pasif" metni; boş string = aktif */
+function blockers(m){
+  const planned=m.status==='PLANNED',active=m.status==='ACTIVE',n=m.waypoints.length;
+  return {
+    start: planned ? (n>=2?'':`Başlatmak için en az 2 nokta gerekir (şu an ${n}).`) : 'Yalnızca planlanan görev başlatılabilir.',
+    complete: active ? '' : 'Yalnızca aktif görev tamamlanabilir.',
+    cancel: (planned||active) ? '' : 'Sonlanmış görev iptal edilemez.'
+  };
+}
+const dis=r=>r?`disabled title="${esc(r)}"`:'';
+function renderDetail(){
+  const m=sel(),dt=$('#detail');
+  $('#hint').hidden=!editable(m);dt.hidden=!m; if(!m) return;
+  const b=blockers(m);
+  const note = !editable(m) ? 'Bu görev sonlandı; değişiklik yapılamaz.' : (m.status==='PLANNED'&&b.start ? b.start+' Haritaya tıklayarak nokta ekle.' : '');
+  dt.innerHTML=`<div class="row"><h3>${esc(m.name)}</h3><span class="pill s-${m.status} sp">${TR[m.status]}</span></div>
+    <small style="color:var(--mute)">${esc(m.description||'Açıklama yok')}</small>
+    ${stepper(m)}
+    <div class="acts"><button class="primary" ${dis(b.start)} onclick="op(${m.id},'start','Görev başlatıldı')">Başlat</button>
+      <button ${dis(b.complete)} onclick="finish(${m.id})">Tamamla</button>
+      <button class="danger" ${dis(b.cancel)} onclick="cancelMission(${m.id})">İptal et</button></div>
+    ${note?`<p class="reason" role="status">${esc(note)}</p>`:''}
+    <small>Rota · ${m.waypoints.length} nokta · ${esc(m.droneName)}</small>
+    <ul class="wp-list">${m.waypoints.map(w=>`<li><b>${w.sequenceNo}</b>${w.latitude.toFixed(4)}, ${w.longitude.toFixed(4)} · ${w.altitude} m</li>`).join('')}</ul>
+    ${editable(m)?`<details ${S.coordOpen?'open':''} ontoggle="S.coordOpen=this.open"><summary>Koordinatla nokta ekle</summary>
+      <div class="coords"><input id="mlat" type="number" step="any" placeholder="Enlem" aria-label="Enlem"><input id="mlon" type="number" step="any" placeholder="Boylam" aria-label="Boylam">
+      <input id="malt" type="number" value="120" min="0" aria-label="Rakım (m)"><button onclick="addManual()">Ekle</button></div></details>`:''}`;
+}
+function render(){
+  chips('#fStatus','fStatus',['PLANNED','ACTIVE','FINISHED','CANCELLED']);chips('#fPrio','fPrio',['LOW','MEDIUM','HIGH','CRITICAL']);
+  const fd=S.drones.find(d=>d.id===S.fDrone);
+  $('#fDrone').innerHTML=fd?`<button class="chip" onclick="S.fDrone=null;render()" aria-label="Drone filtresini kaldır">Drone: ${esc(fd.name)} ✕</button>`:'';
+  const list=S.missions.filter(m=>(!S.fStatus||m.status===S.fStatus)&&(!S.fPrio||m.priority===S.fPrio)&&(!S.fDrone||m.droneId===S.fDrone));
+  $('#missions').innerHTML=list.length?list.map(m=>`
+    <div class="m-card p-${m.priority}" role="option" aria-selected="${m.id===S.selected}" tabindex="0" onclick="pick(${m.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pick(${m.id})}">
+      <div class="row"><h3>${esc(m.name)}</h3><span class="pill s-${m.status} sp">${TR[m.status]}</span></div>
+      <small>${esc(m.droneName)} · ${esc(m.operatorName)} · ${m.waypoints.length} nokta · öncelik ${TR[m.priority].toLowerCase()}</small></div>`).join('')
+    :'<div class="empty">Bu filtreyle eşleşen görev yok. Filtreleri temizle ya da yeni görev oluştur.</div>';
+  const linked=sel()?.droneId;
+  $('#drones').innerHTML=S.drones.map(d=>{const b=d.batteryLevel,cls=b<30?'crit':b<60?'low':'';
+    return `<div class="d-card ${d.id===linked?'linked':''}" role="button" tabindex="0" aria-pressed="${S.fDrone===d.id}" onclick="toggleDrone(${d.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleDrone(${d.id})}">
+      <div class="row"><h3>${esc(d.name)}</h3>
+      <span class="pill sp" style="color:${d.status==='MAINTENANCE'?'var(--amber)':d.onActiveMission?'var(--green)':'var(--mute)'}">${d.status==='MAINTENANCE'?'Bakımda':d.onActiveMission?'Görevde':'Hazır'}</span></div>
+      <small class="mono">${esc(d.model)} · ${esc(d.serialNumber)}</small>
+      <div class="bar ${cls}"><i style="width:${b}%"></i></div>
+      <div class="row"><small class="mono">Batarya %${b}</small>
+      <button class="sp ghost" ${d.onActiveMission?dis('Aktif görevdeki drone bakıma alınamaz.'):''} onclick="event.stopPropagation();setDrone(${d.id},'${d.status==='MAINTENANCE'?'AVAILABLE':'MAINTENANCE'}')">${d.status==='MAINTENANCE'?'Servise al':'Bakıma al'}</button></div></div>`}).join('')||'<div class="empty">Henüz drone yok.</div>';
+  renderDetail();drawRoute(false);
+}
+function toggleDrone(id){S.fDrone=S.fDrone===id?null:id;render();}
+function pick(id){S.selected=id;render();drawRoute(true);}
+const op=(id,a,msg)=>act(()=>api(`/missions/${id}/${a}`,{method:'POST'}),msg);
+async function finish(id){if(await confirmBox('Görev tamamlansın mı?','Tamamlanan göreve artık konum noktası eklenemez.','Görevi tamamla',false)) op(id,'complete','Görev tamamlandı');}
+async function cancelMission(id){if(await confirmBox('Görev iptal edilsin mi?','İptal edilen görev tekrar aktif edilemez. Bu işlem geri alınamaz.','Görevi iptal et',true)) op(id,'cancel','Görev iptal edildi');}
+const setDrone=(id,status)=>act(()=>api(`/drones/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),'Drone durumu güncellendi');
+
+async function load(){
+  const [m,d,o,s]=await Promise.all([api('/missions?size=100'),api('/drones'),api('/operators'),api('/dashboard/stats')]);
+  S.missions=m.content;S.drones=d;S.operators=o;renderStats(s);render();
+}
+
+/* ---------- dialogs ---------- */
+const dlg=$('#dlg');
+function openMission(){
+  const free=d=>d.status!=='MAINTENANCE'&&!d.onActiveMission;
+  const firstFree=S.drones.find(free);
+  dlg.innerHTML=`<form id="f"><h2>Yeni görev</h2>
+  <label for="fn">Görev adı</label><input id="fn" name="name" required maxlength="120">
+  <label for="fd">Açıklama</label><textarea id="fd" name="description" rows="2"></textarea>
+  <label for="fp">Öncelik</label><select id="fp" name="priority">${Object.keys(COLORS).map(p=>`<option value="${p}" ${p==='MEDIUM'?'selected':''}>${TR[p]}</option>`).join('')}</select>
+  <label for="fo">Operatör</label><select id="fo" name="operatorId">${S.operators.map(o=>`<option value="${o.id}">${esc(o.fullName)}</option>`).join('')}</select>
+  <label for="fr">Drone</label><select id="fr" name="droneId">${S.drones.map(d=>`<option value="${d.id}" ${free(d)?'':'disabled'} ${firstFree&&d.id===firstFree.id?'selected':''}>${esc(d.name)}${d.status==='MAINTENANCE'?' (bakımda)':d.onActiveMission?' (aktif görevde)':''}</option>`).join('')}</select>
+  ${firstFree?'':'<p class="warn" role="alert">Atanabilir drone yok: hepsi bakımda ya da aktif görevde.</p>'}
+  <div class="row" style="margin-top:16px"><button type="button" class="ghost" onclick="dlg.close()">Vazgeç</button><button class="primary sp" ${firstFree?'':'disabled'}>Görevi oluştur</button></div></form>`;
+  dlg.showModal();$('#fn').focus();
+  $('#f').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
+    const r=await act(()=>api('/missions',{method:'POST',body:JSON.stringify({...f,operatorId:+f.operatorId,droneId:+f.droneId})}),'Görev oluşturuldu');
+    if(r){dlg.close();pick(r.id);toast('Rotayı çizmek için haritaya tıkla.');}};
+}
+function openDrone(){
+  dlg.innerHTML=`<form id="f"><h2>Drone ekle</h2>
+  <label for="dn">Çağrı adı</label><input id="dn" name="name" required><label for="dm">Model</label><input id="dm" name="model" required>
+  <label for="ds">Seri numarası</label><input id="ds" name="serialNumber" required><label for="db">Batarya (%)</label><input id="db" name="batteryLevel" type="number" min="0" max="100" value="100" required>
+  <div class="row" style="margin-top:16px"><button type="button" class="ghost" onclick="dlg.close()">Vazgeç</button><button class="primary sp">Drone ekle</button></div></form>`;
+  dlg.showModal();$('#dn').focus();
+  $('#f').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
+    const r=await act(()=>api('/drones',{method:'POST',body:JSON.stringify({...f,batteryLevel:+f.batteryLevel})}),'Drone eklendi');if(r)dlg.close();};
+}
+load().then(()=>{const a=S.missions.find(m=>m.status==='ACTIVE');if(a)pick(a.id);}).catch(e=>toast('Sunucuya ulaşılamadı',true,e.message));
+/* Yazarken form sıfırlanmasın diye, detay panelinde bir input odaktayken yenileme atlanır */
+setInterval(()=>{const a=document.activeElement;if(a&&a.tagName==='INPUT'&&$('#detail').contains(a))return;if(dlg.open||$('#cdlg').open)return;load().catch(()=>{});},15000);
+</script>
+</body>
+</html>
