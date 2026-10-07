@@ -211,3 +211,16 @@ drone-ops/
 | Harita karoları yüklenmiyor | Tarayıcının internete çıkabildiğini kontrol edin (harita karoları ve Leaflet CDN'den gelir) |
 | Arayüz değişikliği görünmüyor | `docker compose up --build` ve tarayıcıda sert yenileme (`Cmd/Ctrl+Shift+R`) |
 | Loglarda `constraint ... does not exist, skipping` | Zararsızdır; Hibernate şemayı ilk kez oluştururken yazar |
+## Logging & Observability
+
+Uygulama Lombok `@Slf4j` ile yapılandırılmış (anahtar=değer) log üretir. Loglarda yalnızca kimlik, durum ve sayı gibi alanlar bulunur; e-posta, isim ve seri numarası gibi kişisel/serbest metinler loglanmaz.
+
+| Seviye | Nerede | Ne zaman |
+|---|---|---|
+| `INFO` | Controller | Her HTTP isteği: metot, yol, parametreler (ör. `POST /api/missions/4/start`) |
+| `INFO` | Service | Durum değiştiren iş olayları: görev oluşturuldu/başlatıldı/tamamlandı/iptal edildi, nokta eklendi, drone durumu değişti |
+| `DEBUG` | Service | İç kontroller: drone kilidi alma, atanabilirlik ve çakışma (ACTIVE görev) kontrolü, başlatma ön koşulları, sayfalama parametreleri |
+| `WARN` | `GlobalExceptionHandler` | İş kuralı ihlalleri (409), bulunamayan kaynaklar (404), doğrulama ve bozuk istek hataları (400) |
+| `ERROR` | `GlobalExceptionHandler` | Beklenmeyen 500 hataları; stack trace ile birlikte |
+
+Seviye varsayılan olarak `INFO`'dur. Ortam değişkeniyle değiştirilir: `LOG_LEVEL=DEBUG docker compose up --build` (yerelde `LOG_LEVEL=DEBUG mvn spring-boot:run`). Canlı izleme: `docker compose logs -f app`.
