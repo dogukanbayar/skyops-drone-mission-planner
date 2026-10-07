@@ -12,11 +12,13 @@ import com.droneops.mapper.DroneMapper;
 import com.droneops.repository.DroneRepository;
 import com.droneops.repository.MissionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -32,6 +34,7 @@ public class DroneService {
             throw new BusinessRuleException("Bu seri numarasıyla kayıtlı bir drone zaten var.");
         }
         Drone saved = droneRepository.save(mapper.toEntity(request));
+        log.info("Drone created: id={}, status={}", saved.getId(), saved.getStatus());
         return mapper.toResponse(saved, false);
     }
 
@@ -45,12 +48,15 @@ public class DroneService {
 
     @Transactional
     public DroneResponse updateStatus(Long id, DroneStatusRequest request) {
+        log.debug("Updating drone status: id={}, requested={}", id, request.status());
         Drone drone = droneRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Drone", id));
         if (request.status() == DroneStatus.MAINTENANCE && isOnActiveMission(drone)) {
             throw new BusinessRuleException("ACTIVE görevdeki drone bakıma alınamaz. Önce görevi tamamlayın veya iptal edin.");
         }
+        DroneStatus previous = drone.getStatus();
         drone.setStatus(request.status());
+        log.info("Drone status changed: id={}, {} -> {}", drone.getId(), previous, drone.getStatus());
         return toResponse(drone);
     }
 

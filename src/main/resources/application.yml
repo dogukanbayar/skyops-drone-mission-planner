@@ -24,3 +24,6 @@ springdoc:
     path: /v3/api-docs
 server:
   port: 8080
+logging:
+  level:
+    com.droneops: ${LOG_LEVEL:INFO}

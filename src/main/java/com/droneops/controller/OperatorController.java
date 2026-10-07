@@ -11,12 +11,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/operators")
 @RequiredArgsConstructor
@@ -31,12 +33,14 @@ public class OperatorController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping
     public ResponseEntity<OperatorResponse> create(@Valid @RequestBody OperatorRequest request) {
+        log.info("POST /api/operators");
         return ResponseEntity.status(HttpStatus.CREATED).body(operatorService.create(request));
     }
 
     @Operation(summary = "Operatörleri listele")
     @GetMapping
     public List<OperatorResponse> list() {
+        log.info("GET /api/operators");
         return operatorService.findAll();
     }
 
@@ -45,6 +49,7 @@ public class OperatorController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping("/{id}")
     public OperatorResponse get(@PathVariable Long id) {
+        log.info("GET /api/operators/{}", id);
         return operatorService.findById(id);
     }
 }

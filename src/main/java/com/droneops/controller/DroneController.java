@@ -12,12 +12,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/drones")
 @RequiredArgsConstructor
@@ -32,12 +34,14 @@ public class DroneController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping
     public ResponseEntity<DroneResponse> create(@Valid @RequestBody DroneRequest request) {
+        log.info("POST /api/drones batteryLevel={}", request.batteryLevel());
         return ResponseEntity.status(HttpStatus.CREATED).body(droneService.create(request));
     }
 
     @Operation(summary = "Filoyu listele", description = "Her drone için ACTIVE görevde olup olmadığı da döner.")
     @GetMapping
     public List<DroneResponse> list() {
+        log.info("GET /api/drones");
         return droneService.findAll();
     }
 
@@ -46,6 +50,7 @@ public class DroneController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping("/{id}")
     public DroneResponse get(@PathVariable Long id) {
+        log.info("GET /api/drones/{}", id);
         return droneService.findById(id);
     }
 
@@ -55,6 +60,7 @@ public class DroneController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PatchMapping("/{id}/status")
     public DroneResponse updateStatus(@PathVariable Long id, @Valid @RequestBody DroneStatusRequest request) {
+        log.info("PATCH /api/drones/{}/status newStatus={}", id, request.status());
         return droneService.updateStatus(id, request);
     }
 }
