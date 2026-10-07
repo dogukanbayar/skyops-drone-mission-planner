@@ -16,10 +16,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/missions")
 @RequiredArgsConstructor
@@ -39,6 +41,7 @@ public class MissionController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping
     public ResponseEntity<MissionResponse> create(@Valid @RequestBody MissionRequest request) {
+        log.info("POST /api/missions operatorId={}, droneId={}, priority={}, waypoints={}", request.operatorId(), request.droneId(), request.priority(), request.waypoints() == null ? 0 : request.waypoints().size());
         return ResponseEntity.status(HttpStatus.CREATED).body(missionService.create(request));
     }
 
@@ -51,6 +54,7 @@ public class MissionController {
             @Parameter(description = "Drone kimliği") @RequestParam(required = false) Long droneId,
             @Parameter(description = "Sayfa numarası (0'dan başlar)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Sayfa boyutu (1-100)") @RequestParam(defaultValue = "20") int size) {
+        log.info("GET /api/missions status={}, priority={}, droneId={}, page={}, size={}", status, priority, droneId, page, size);
         return missionService.findAll(status, priority, droneId, page, size);
     }
 
@@ -59,6 +63,7 @@ public class MissionController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @GetMapping("/{id}")
     public MissionResponse get(@PathVariable Long id) {
+        log.info("GET /api/missions/{}", id);
         return missionService.findById(id);
     }
 
@@ -68,6 +73,7 @@ public class MissionController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping("/{id}/waypoints")
     public ResponseEntity<MissionResponse> addWaypoint(@PathVariable Long id, @Valid @RequestBody WaypointRequest request) {
+        log.info("POST /api/missions/{}/waypoints lat={}, lon={}, alt={}", id, request.latitude(), request.longitude(), request.altitude());
         return ResponseEntity.status(HttpStatus.CREATED).body(missionService.addWaypoint(id, request));
     }
 
@@ -77,6 +83,7 @@ public class MissionController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping("/{id}/start")
     public MissionResponse start(@PathVariable Long id) {
+        log.info("POST /api/missions/{}/start", id);
         return missionService.start(id);
     }
 
@@ -85,6 +92,7 @@ public class MissionController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping("/{id}/complete")
     public MissionResponse complete(@PathVariable Long id) {
+        log.info("POST /api/missions/{}/complete", id);
         return missionService.complete(id);
     }
 
@@ -93,6 +101,7 @@ public class MissionController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping("/{id}/cancel")
     public MissionResponse cancel(@PathVariable Long id) {
+        log.info("POST /api/missions/{}/cancel", id);
         return missionService.cancel(id);
     }
 }

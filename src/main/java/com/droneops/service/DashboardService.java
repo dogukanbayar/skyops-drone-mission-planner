@@ -6,9 +6,11 @@ import com.droneops.dto.DashboardStats;
 import com.droneops.repository.DroneRepository;
 import com.droneops.repository.MissionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -18,6 +20,7 @@ public class DashboardService {
     private final DroneRepository droneRepository;
 
     public DashboardStats stats() {
+        log.debug("Computing dashboard stats");
         return new DashboardStats(
                 missionRepository.count(),
                 missionRepository.countByStatus(MissionStatus.PLANNED),

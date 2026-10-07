@@ -28,6 +28,7 @@ services:
       DB_USER: droneops
       DB_PASSWORD: droneops
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
       - "8080:8080"
 
